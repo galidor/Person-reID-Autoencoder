@@ -1,27 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Mon Jun 26 14:46:56 2017
-
 @author: luohao
+date: 2018
+available: https://github.com/zhunzhong07/person-re-ranking/tree/master/python-version
 """
-
-"""
-CVPR2017 paper:Zhong Z, Zheng L, Cao D, et al. Re-ranking Person Re-identification with k-reciprocal Encoding[J]. 2017.
-url:http://openaccess.thecvf.com/content_cvpr_2017/papers/Zhong_Re-Ranking_Person_Re-Identification_CVPR_2017_paper.pdf
-Matlab version: https://github.com/zhunzhong07/person-re-ranking
-"""
-
-"""
-API
-
-probFea: all feature vectors of the query set, shape = (image_size, feature_dim)
-galFea: all feature vectors of the gallery set, shape = (image_size, feature_dim)
-k1,k2,lambda: parameters, the original paper is (k1=20,k2=6,lambda=0.3)
-MemorySave: set to 'True' when using MemorySave mode
-Minibatch: avaliable when 'MemorySave' is 'True'
-"""
-
 
 import numpy as np
 from scipy.spatial.distance import cdist

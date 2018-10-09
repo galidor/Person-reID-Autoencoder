@@ -1,3 +1,9 @@
+"""
+@author: layumi
+date: 2018
+available: https://github.com/layumi/Person_reID_baseline_pytorch
+"""
+
 import scipy.io
 import torch
 import numpy as np
