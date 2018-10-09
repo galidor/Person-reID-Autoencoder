@@ -8,9 +8,6 @@ import math
 from scipy.misc import imsave
 import os.path as osp
 
-root_path = "/home/galidor/Documents/msc_project/datasets/"
-data_path = "/home/galidor/Documents/msc_project/datasets/data_test/"
-
 
 class ImageDataset(Dataset):
 
@@ -34,25 +31,25 @@ class ImageDataset(Dataset):
 
 class CUHK03(object):
     """Preprocess raw CUHK03 to match PyTorch format"""
-    def __init__(self, root_path, data_path, preprocess=False, preprocess_check=False):
+    def __init__(self, data_path, image_path, preprocess=False, preprocess_check=False):
         if preprocess_check:
-            self.preprocess_check_CUHK03(root_path, data_path)
+            self.preprocess_check_CUHK03(data_path, image_path)
         self.preprocess = preprocess
-        datasets = self.get_CUHK03_dataset(root_path, data_path)
+        datasets = self.get_CUHK03_dataset(data_path, image_path)
         self.train = np.swapaxes(datasets[0], 0, 1)
         self.query = np.swapaxes(datasets[1], 0, 1)
         self.gallery = np.swapaxes(datasets[2], 0, 1)
 
-    def get_CUHK03_dataset(self, root_path, data_path):
+    def get_CUHK03_dataset(self, data_path, image_path):
         if self.preprocess:
-            self.preprocess_CUHK03(root_path, data_path)
-        train_idxs = loadmat(osp.join(root_path, "cuhk03_new_protocol_config_labeled.mat"))['train_idx'].flatten()-1
-        query_idxs = loadmat(osp.join(root_path, "cuhk03_new_protocol_config_labeled.mat"))['query_idx'].flatten()-1
-        gallery_idxs = loadmat(osp.join(root_path, "cuhk03_new_protocol_config_labeled.mat"))['gallery_idx'].flatten()-1
-        img_idxs = loadmat(osp.join(root_path, "cuhk03_new_protocol_config_labeled.mat"))['labels'].flatten()
-        filelist = loadmat(osp.join(root_path, "cuhk03_new_protocol_config_labeled.mat"))['filelist'].flatten()
+            self.preprocess_CUHK03(data_path, image_path)
+        train_idxs = loadmat(osp.join(data_path, "cuhk03_new_protocol_config_labeled.mat"))['train_idx'].flatten()-1
+        query_idxs = loadmat(osp.join(data_path, "cuhk03_new_protocol_config_labeled.mat"))['query_idx'].flatten()-1
+        gallery_idxs = loadmat(osp.join(data_path, "cuhk03_new_protocol_config_labeled.mat"))['gallery_idx'].flatten()-1
+        img_idxs = loadmat(osp.join(data_path, "cuhk03_new_protocol_config_labeled.mat"))['labels'].flatten()
+        filelist = loadmat(osp.join(data_path, "cuhk03_new_protocol_config_labeled.mat"))['filelist'].flatten()
 
-        def create_set(data_path, filelist, set_idxs, img_idxs, train = False):
+        def create_set(data_path, filelist, set_idxs, img_idxs, train=False):
             img_paths = []
             camera_idxs = []
             labels = img_idxs[set_idxs]
@@ -85,7 +82,7 @@ class CUHK03(object):
         except OSError:
             if not os.path.isdir(data_path):
                 raise
-        f = h5py.File(root_path + "cuhk03_release/cuhk-03.mat", "r")
+        f = h5py.File(osp.join(data_path, "cuhk03_release/cuhk-03.mat", "r"))
         imgs_processed = 0
         for subset_id, subset_ref in enumerate(f['labeled'][0]):
             subset = f[subset_ref][:].T
@@ -105,15 +102,15 @@ class CUHK03(object):
                                                                      math.ceil(processed)))
         print("Processing images succeeded.")
 
-    def preprocess_check_CUHK03(self, root_path, data_path):
+    def preprocess_check_CUHK03(self, data_path, image_path):
         print("Checking data path...")
-        filelist = loadmat(root_path + "cuhk03_new_protocol_config_labeled.mat")['filelist']
+        filelist = loadmat(osp.join(data_path, "cuhk03_new_protocol_config_labeled.mat"))['filelist']
         missing_files = False
         for idx, name in enumerate(filelist.flatten()):
             name = np.array2string(name)
             name = name.replace("[u'", "")
             name = name.replace("']", "")
-            path = data_path + name
+            path = osp.join(image_path, name)
             if not os.path.isfile(path):
                 print("Missing file: {}".format(path))
                 missing_files = True
