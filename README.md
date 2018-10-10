@@ -6,6 +6,6 @@ I performed all the experiments on CUHK03 dataset, availible [here](http://www.e
 >> cuhk03.mat  
 >> README.md  
 >> cuhk03_new_protocol_config_labeled.mat  
-After prepairing the folder in such a manner, run the train_model_ResNet50.py program as follows:   
-'python train_model_ResNet50.py --data_path /your/data/path --preprocess_dataset'
+After prepairing the folder in such a manner, run the train_model_ResNet50.py program as follows:  
+`python train_model_ResNet50.py --data_path /your/data/path --preprocess_dataset`
 
