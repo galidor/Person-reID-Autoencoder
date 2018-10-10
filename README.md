@@ -28,3 +28,6 @@ After finishing that you are ready for the next step which is training person re
 python train_model_ResNet50.py --data_path /your/data/path --batch_size 16 --model_path your/model/path --optim_step 20 --learining_rate 0.01 --epochs 50 --normalize --reranking  
 python train_model_PCB.py --data_path /your/data/path --batch_size 16 --model_path your/model/path --optim_step 20 --learining_rate 0.01 --epochs 50 --normalize --reranking  
 ```
+For me, training on GeForce GTX 1060 took around 1 hr per 40 epochs.  
+Your trained model will be saved in the selected directory, waiting for evaluation.  
+## Autoencoder training
