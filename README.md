@@ -18,7 +18,9 @@ Your data_path should then look like this:
 >>> cuhk03.mat  
 >>> README.md  
 
-All the images from CUHK03 "labeled" are stored in the folder img. After finishing that you are ready for the next step which is training person re-ID feature extractor by running either train_model_ResNet50.py or train_model_PCB.py as follows:  
+All the images from CUHK03 "labeled" are stored in the folder img.  
+## Training re-ID feature extractor
+After finishing that you are ready for the next step which is training person re-ID feature extractor by running either train_model_ResNet50.py or train_model_PCB.py as follows (please note that certain arguments may be optional, just type `python train_model_ResNet50.py --help` for detailed description):  
 ```
 python train_model_ResNet50.py --data_path /your/data/path --batch_size 16 --model_path your/model/path --optim_step 20 --learining_rate 0.01 --epochs 50 --normalize --reranking  
 python train_model_PCB.py --data_path /your/data/path --batch_size 16 --model_path your/model/path --optim_step 20 --learining_rate 0.01 --epochs 50 --normalize --reranking  
