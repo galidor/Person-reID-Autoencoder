@@ -9,13 +9,14 @@ available: https://github.com/zhunzhong07/person-re-ranking/tree/master/python-v
 import numpy as np
 from scipy.spatial.distance import cdist
 
+
 def re_ranking(probFea,galFea,k1,k2,lambda_value, MemorySave = False, Minibatch = 2000):
 
     query_num = probFea.shape[0]
     all_num = query_num + galFea.shape[0]    
     feat = np.append(probFea,galFea,axis = 0)
     feat = feat.astype(np.float16)
-    print('computing original distance')
+    print('Computing original distance...')
     if MemorySave:
         original_dist = np.zeros(shape = [all_num,all_num],dtype = np.float16)
         i = 0
@@ -37,8 +38,7 @@ def re_ranking(probFea,galFea,k1,k2,lambda_value, MemorySave = False, Minibatch 
     initial_rank = np.argsort(original_dist).astype(np.int32)
     print(original_dist.shape)
 
-    
-    print('starting re_ranking')
+    print('Starting re_ranking...')
     for i in range(all_num):
         # k-reciprocal neighbors
         forward_k_neigh_index = initial_rank[i,:k1+1]
@@ -72,7 +72,6 @@ def re_ranking(probFea,galFea,k1,k2,lambda_value, MemorySave = False, Minibatch 
     
     jaccard_dist = np.zeros_like(original_dist,dtype = np.float16)
 
-    
     for i in range(query_num):
         temp_min = np.zeros(shape=[1,gallery_num],dtype=np.float16)
         indNonZero = np.where(V[i,:] != 0)[0]

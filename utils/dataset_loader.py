@@ -1,5 +1,5 @@
-from torch.utils.data import Dataset
 from PIL import Image
+from torch.utils.data import Dataset
 import h5py
 import numpy as np
 from scipy.io import loadmat
@@ -30,26 +30,28 @@ class ImageDataset(Dataset):
 
 
 class CUHK03(object):
-    """Preprocess raw CUHK03 to match PyTorch format"""
+    #Preprocess raw CUHK03 to match PyTorch format
     def __init__(self, data_path, image_path, preprocess=False, preprocess_check=False):
+        if preprocess:
+            self.preprocess_CUHK03(data_path, image_path)
         if preprocess_check:
             self.preprocess_check_CUHK03(data_path, image_path)
-        self.preprocess = preprocess
-        datasets = self.get_CUHK03_dataset(data_path, image_path)
-        self.train = np.swapaxes(datasets[0], 0, 1)
-        self.query = np.swapaxes(datasets[1], 0, 1)
-        self.gallery = np.swapaxes(datasets[2], 0, 1)
+        if osp.exists(image_path):
+            datasets = self.get_CUHK03_dataset(data_path, image_path)
+            self.train = np.swapaxes(datasets[0], 0, 1)
+            self.query = np.swapaxes(datasets[1], 0, 1)
+            self.gallery = np.swapaxes(datasets[2], 0, 1)
+        else:
+            print('Dataset is not preprocessed, use --preprocess_dataset to allow preprocessing, do it only once.')
 
     def get_CUHK03_dataset(self, data_path, image_path):
-        if self.preprocess:
-            self.preprocess_CUHK03(data_path, image_path)
         train_idxs = loadmat(osp.join(data_path, "cuhk03_new_protocol_config_labeled.mat"))['train_idx'].flatten()-1
         query_idxs = loadmat(osp.join(data_path, "cuhk03_new_protocol_config_labeled.mat"))['query_idx'].flatten()-1
         gallery_idxs = loadmat(osp.join(data_path, "cuhk03_new_protocol_config_labeled.mat"))['gallery_idx'].flatten()-1
         img_idxs = loadmat(osp.join(data_path, "cuhk03_new_protocol_config_labeled.mat"))['labels'].flatten()
         filelist = loadmat(osp.join(data_path, "cuhk03_new_protocol_config_labeled.mat"))['filelist'].flatten()
 
-        def create_set(data_path, filelist, set_idxs, img_idxs, train=False):
+        def create_set(image_path, filelist, set_idxs, img_idxs, train=False):
             img_paths = []
             camera_idxs = []
             labels = img_idxs[set_idxs]
@@ -58,32 +60,29 @@ class CUHK03(object):
                 train_labels = list(set(img_idxs[set_idxs]))
                 for i, n in enumerate(labels):
                     labels[i] = train_labels_replaced[train_labels.index(n)]
-                if append:
-                    labels = np.append(labels, labels, axis=0)
-                    print(len(labels))
             for idx in set_idxs:
-                name = filelist[idx]
-                name = np.array2string(name)
-                name = name.replace("[u'", "")
-                name = name.replace("']", "")
+                name = filelist[idx][0]
                 camera_idxs.append(int(name.split("_")[2]))
-                path = data_path + name
+                path = osp.join(image_path, name)
                 img_paths.append(path)
             return img_paths, labels, camera_idxs
-        dataset_train = create_set(data_path, filelist, train_idxs, img_idxs, train=True)
-        dataset_query = create_set(data_path, filelist, query_idxs, img_idxs)
-        dataset_gallery = create_set(data_path, filelist, gallery_idxs, img_idxs)
+
+        dataset_train = create_set(image_path, filelist, train_idxs, img_idxs, train=True)
+        dataset_query = create_set(image_path, filelist, query_idxs, img_idxs)
+        dataset_gallery = create_set(image_path, filelist, gallery_idxs, img_idxs)
         return dataset_train, dataset_query, dataset_gallery
 
-    def preprocess_CUHK03(self, root_path, data_path):
-        print("Data preprocessing, saving images to directory {}".format(data_path))
+    def preprocess_CUHK03(self, data_path, image_path):
+        print("Data preprocessing, saving images to directory {}.".format(image_path))
         try:
-            os.makedirs(data_path)
+            os.makedirs(image_path)
         except OSError:
-            if not os.path.isdir(data_path):
+            if not os.path.isdir(image_path):
                 raise
-        f = h5py.File(osp.join(data_path, "cuhk03_release/cuhk-03.mat", "r"))
+        from progress.bar import IncrementalBar
+        f = h5py.File(osp.join(data_path, "cuhk03_release/cuhk-03.mat"), "r")
         imgs_processed = 0
+        bar = IncrementalBar('Processing images: ', max=14096, suffix='%(percent).1f%% - %(eta)ds')
         for subset_id, subset_ref in enumerate(f['labeled'][0]):
             subset = f[subset_ref][:].T
             for img_idx in range(subset.shape[0]):
@@ -92,14 +91,16 @@ class CUHK03(object):
                     img_name = '{:d}_{:03d}_{:d}_{:02d}'.format(subset_id+1, img_idx+1, camera_id, view_idx+1)
                     img = f[subset[img_idx][view_idx]][:].T
                     if img.size == 0 or img.ndim < 3: continue
-                    imsave(data_path + img_name + ".png", img)
+                    imsave(osp.join(image_path, img_name) + ".png", img)
                     imgs_processed = imgs_processed + 1
                     if imgs_processed%100 == 0:
                         processed = float(imgs_processed)/14096*100
                         remaining = 100 - processed
-                        print("Processing images: [{}{}] {}%".format("#"*int(round(20*processed/100)),
-                                                                     "-"*int(round(20*remaining/100)),
-                                                                     math.ceil(processed)))
+                        # print("Processing images: [{}{}] {}%".format("#"*int(round(20*processed/100)),
+                        #                                              "-"*int(round(20*remaining/100)),
+                        #                                              math.ceil(processed)))
+                    bar.next()
+        bar.finish()
         print("Processing images succeeded.")
 
     def preprocess_check_CUHK03(self, data_path, image_path):
@@ -107,9 +108,7 @@ class CUHK03(object):
         filelist = loadmat(osp.join(data_path, "cuhk03_new_protocol_config_labeled.mat"))['filelist']
         missing_files = False
         for idx, name in enumerate(filelist.flatten()):
-            name = np.array2string(name)
-            name = name.replace("[u'", "")
-            name = name.replace("']", "")
+            name = name[0]
             path = osp.join(image_path, name)
             if not os.path.isfile(path):
                 print("Missing file: {}".format(path))
