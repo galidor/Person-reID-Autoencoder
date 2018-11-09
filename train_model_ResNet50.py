@@ -18,8 +18,8 @@ from utils import progress_bar
 from tensorboardX import SummaryWriter
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-required = parser.add_argument_group('required arguments')
-optional = parser.add_argument_group('optional arguments')
+required = parser.add_argument_group('Required Arguments')
+optional = parser.add_argument_group('Optional Arguments')
 required.add_argument('--data_path', type=str, required=True, help='Path to your folder with dataset')
 
 optional.add_argument('--model_path', type=str, required=False, default='/', help='Path where your network will be'
