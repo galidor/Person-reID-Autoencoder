@@ -322,13 +322,8 @@ class Discriminator1(nn.Module):
 class ResNet50(nn.Module):
     def __init__(self, num_classes, feature_dim=2048):
         super(ResNet50, self).__init__()
-        # bottleneck = torchvision.models.resnet.Bottleneck(feature_dim,)
         resnet50 = torchvision.models.resnet50(pretrained=True)
-        # self.base = nn.Sequential(*list(resnet50.children())[:-2])
         self.base = nn.Sequential(*list(resnet50.children())[:-2])
-        # self.inplanes = 1024
-        # self.layer4 = self._make_layer(torchvision.models.resnet.Bottleneck, feature_dim//4, 3, stride=2)
-        # self.feature_extraction = nn.Linear(2048, feature_dim)
         self.classifier = nn.Linear(feature_dim, num_classes)
 
     def _make_layer(self, block, planes, blocks, stride=1):
@@ -340,7 +335,7 @@ class ResNet50(nn.Module):
                 nn.BatchNorm2d(planes * block.expansion),
             )
 
-        layers = []
+        layers = list()
         layers.append(block(self.inplanes, planes, stride, downsample))
         self.inplanes = planes * block.expansion
         for i in range(1, blocks):

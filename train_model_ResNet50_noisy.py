@@ -47,12 +47,30 @@ class ResNet50(nn.Module):
         super(ResNet50, self).__init__()
         resnet50 = torchvision.models.resnet50(pretrained=True)
         self.base = nn.Sequential(*list(resnet50.children())[:-2])
+        self.channel_model = None
         self.classifier = nn.Linear(2048, num_classes)
 
     def forward(self, x):
         x = self.base(x)
         x = F.avg_pool2d(x, x.size()[2:])
         f = x.view(x.size(0), -1)
+        # Normalization and communication channel
+        f_power = torch.sqrt(torch.sum(torch.pow(f, 2))/2048)
+        # fnorm = torch.norm(f, p=2, dim=1, keepdim=True)
+        f_normalized = torch.div(f, f_power)
+        f_noisy = f_normalized + torch.randn(f_normalized.size()).cuda()*torch.Tensor([0.05]).cuda()
+        f_denormalized = torch.mul(f_noisy, f_power)
+        # print(torch.max(f_denormalized))
+        # print(torch.min(f_denormalized))
+        # print(torch.max(f))
+        # print(torch.min(f))
+        # print(f_noisy)
+        # print(f_normalized)
+        # print(torch.norm(torch.randn(f_normalized.size()), p=2, dim=1))
+        # print(torch.sqrt(torch.sum(torch.pow(torch.randn(2048)*torch.Tensor([0.05]), 2))/2048))
+        # print(torch.sqrt(torch.sum(torch.pow(f_normalized, 2))/2048))
+        # print(torch.sqrt(torch.sum(torch.pow(f, 2))/2048))
+        f = f_denormalized
         y = self.classifier(f)
         if self.training:
             return y
@@ -75,6 +93,8 @@ def train(epoch, net, criterion, optimizer, data_train_loader):
 
         # forward + backward + optimize
         outputs = net(inputs)
+        # print(outputs.size())
+        # exit()
         loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
@@ -113,6 +133,7 @@ def evaluate_new(net, data_query_loader, data_gallery_loader, feature_dim=2048):
         query_features[i, :] = np.array(features)
         query_labels.append(labels)
         query_cameras.append(camera_id)
+        # query_paths.append(path)
     gallery_features = np.empty([len(data_gallery_loader), feature_dim])
     gallery_labels = []
     gallery_cameras = []
@@ -126,9 +147,10 @@ def evaluate_new(net, data_query_loader, data_gallery_loader, feature_dim=2048):
         gallery_features[i, :] = np.array(features)
         gallery_labels.append(labels)
         gallery_cameras.append(camera_id)
+        # gallery_paths.append(path)
     query_labels, query_cameras = np.array(query_labels), np.array(query_cameras)
     gallery_labels, gallery_cameras = np.array(gallery_labels), np.array(gallery_cameras)
-    if opt.rerank:
+    if opt.reranking:
         re_ranking_distance = re_ranking_feature.re_ranking(query_features, gallery_features, 20, 6, 0.3)
     else:
         re_ranking_distance = euclidean_distance.calculate_distance(query_features, gallery_features)
@@ -142,7 +164,7 @@ def evaluate_new(net, data_query_loader, data_gallery_loader, feature_dim=2048):
         ap += ap_tmp
     CMC = CMC.float()
     CMC = CMC / len(query_labels)
-    print('Top1:{} Top5:{} Top10:%f mAP:{}'.format(CMC[0], CMC[4], CMC[9], ap / len(query_labels)))
+    print('Top1:{} Top5:{} Top10:{} mAP:{}'.format(CMC[0], CMC[4], CMC[9], ap / len(query_labels)))
     print(time.time() - start_time)
     return CMC, ap
 
