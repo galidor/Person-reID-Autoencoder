@@ -16,6 +16,10 @@ import os.path as osp
 from utils import progress_bar
 from tensorboardX import SummaryWriter
 
+#####################################
+# TODO: Add initialization for fully connected layers
+#####################################
+
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 required = parser.add_argument_group('Required Arguments')
 optional = parser.add_argument_group('Optional Arguments')
@@ -31,6 +35,7 @@ optional.add_argument('--normalize', action='store_true', help='Use if you want 
 optional.add_argument('--reranking', action='store_true', help='Use this if you want to use k-reciprocal encoding')
 optional.add_argument('--preprocess_dataset', action='store_true', help='Do it only if you have raw CUHK03 .mat file')
 optional.add_argument('--epochs', type=int, default=50, help='Total number of epochs')
+optional.add_argument('--feature_dim', type=int, default=2048, help='Size of feature vector.')
 opt = parser.parse_args()
 
 
@@ -43,22 +48,24 @@ def imshow(image):
 
 # top1:0.469286 top5:0.668571 top10:0.750000 mAP:0.432923
 class ResNet50(nn.Module):
-    def __init__(self, num_classes):
+    def __init__(self, num_classes, feature_dim):
         super(ResNet50, self).__init__()
         resnet50 = torchvision.models.resnet50(pretrained=True)
+        self.feature_dim = feature_dim
         self.base = nn.Sequential(*list(resnet50.children())[:-2])
-        self.channel_model = None
-        self.classifier = nn.Linear(2048, num_classes)
+        self.linear = nn.Linear(2048, self.feature_dim)
+        self.classifier = nn.Linear(self.feature_dim, num_classes)
 
     def forward(self, x):
         x = self.base(x)
         x = F.avg_pool2d(x, x.size()[2:])
         f = x.view(x.size(0), -1)
+        f = self.linear(f)
         # Normalization and communication channel
-        f_power = torch.sqrt(torch.sum(torch.pow(f, 2))/2048)
+        f_power = torch.sqrt(torch.sum(torch.pow(f, 2))/self.feature_dim)
         # fnorm = torch.norm(f, p=2, dim=1, keepdim=True)
         f_normalized = torch.div(f, f_power)
-        f_noisy = f_normalized + torch.randn(f_normalized.size()).cuda()*torch.Tensor([0.05]).cuda()
+        f_noisy = f_normalized + torch.randn(f_normalized.size()).cuda()*torch.Tensor([0.0]).cuda()
         f_denormalized = torch.mul(f_noisy, f_power)
         # print(torch.max(f_denormalized))
         # print(torch.min(f_denormalized))
@@ -214,16 +221,17 @@ if __name__ == '__main__':
     if opt.test:
         net = torch.load(opt.model_path)
         net = net.cuda()
-        cmc, ap = evaluate_new(net, cuhk_data_query_loader, cuhk_data_gallery_loader)
+        cmc, ap = evaluate_new(net, cuhk_data_query_loader, cuhk_data_gallery_loader, feature_dim=opt.feature_dim)
         exit()
 
-    net = ResNet50(num_classes=767)
+    net = ResNet50(num_classes=767, feature_dim=opt.feature_dim)
     net = net.cuda()
     criterion = nn.CrossEntropyLoss().cuda()
     optimizer = optim.SGD([
-        {'params': net.base.parameters(), 'lr': opt.learning_rate},
+        {'params': net.base.parameters(), 'lr': opt.learning_rate, 'weight_decay': 5e-4},
+        {'params': net.linear.parameters(), 'lr': 0.01, 'weight_decay': 5e-3},
         {'params': net.classifier.parameters(), 'lr': 0.01}
-    ], momentum=0.9, weight_decay=5e-4)
+    ], momentum=0.9)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=opt.optim_step, gamma=0.1, last_epoch=-1)
     acc_best = 0
     for epoch in range(opt.epochs):
@@ -231,7 +239,7 @@ if __name__ == '__main__':
         train(epoch, net, criterion, optimizer, cuhk_data_train_loader)
         if (epoch+1) % 10 == 0:
             print("Evaluation...")
-            cmc, ap = evaluate_new(net, cuhk_data_query_loader, cuhk_data_gallery_loader)
+            cmc, ap = evaluate_new(net, cuhk_data_query_loader, cuhk_data_gallery_loader, feature_dim=opt.feature_dim)
             if cmc[0] > acc_best:
                 torch.save(net, osp.join(opt.model_path, "ResNet50-{}".format(model_index)))
                 acc_best = cmc[0]
