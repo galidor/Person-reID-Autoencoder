@@ -16,10 +16,6 @@ import os.path as osp
 from utils import progress_bar
 from tensorboardX import SummaryWriter
 
-#####################################
-# TODO: Add initialization for fully connected layers
-#####################################
-
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 required = parser.add_argument_group('Required Arguments')
 optional = parser.add_argument_group('Optional Arguments')
@@ -55,6 +51,15 @@ class ResNet50(nn.Module):
         self.base = nn.Sequential(*list(resnet50.children())[:-2])
         self.linear = nn.Linear(2048, self.feature_dim)
         self.classifier = nn.Linear(self.feature_dim, num_classes)
+        self.linear.apply(self.weights_init)
+
+    @staticmethod
+    def weights_init(m):
+        if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d) or isinstance(m, nn.Linear):
+            nn.init.kaiming_normal_(m.weight.data)
+        elif isinstance(m, nn.BatchNorm2d):
+            nn.init.kaiming_normal_(m.weight.data)
+            nn.init.constant_(m.bias.data, 0.0)
 
     def forward(self, x):
         x = self.base(x)
