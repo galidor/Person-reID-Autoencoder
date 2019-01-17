@@ -141,7 +141,7 @@ def evaluate_new(net, data_query_loader, data_gallery_loader, feature_dim=2048):
         inputs, labels, camera_id = query
         inputs, labels = inputs.half().cuda(), labels.cuda()
         features = net(inputs)
-        features = features.data.cpu()
+        features = features.float().data.cpu()
         query_features[i, :] = np.array(features)
         query_labels.append(labels)
         query_cameras.append(camera_id)
@@ -155,13 +155,13 @@ def evaluate_new(net, data_query_loader, data_gallery_loader, feature_dim=2048):
         inputs, labels, camera_id = query
         inputs, labels = inputs.half().cuda(), labels.cuda()
         features = net(inputs)
-        features = features.data.cpu()
+        features = features.float().data.cpu()
         gallery_features[i, :] = np.array(features)
         gallery_labels.append(labels)
         gallery_cameras.append(camera_id)
         # gallery_paths.append(path)
-    query_labels, query_cameras = np.array(query_labels), np.array(query_cameras)
-    gallery_labels, gallery_cameras = np.array(gallery_labels), np.array(gallery_cameras)
+    query_labels, query_cameras = np.array(torch.cat(query_labels).data.cpu()), np.array(query_cameras)
+    gallery_labels, gallery_cameras = np.array(torch.cat(gallery_labels).data.cpu()), np.array(gallery_cameras)
     if opt.reranking:
         re_ranking_distance = re_ranking_feature.re_ranking(query_features, gallery_features, 20, 6, 0.3)
     else:
