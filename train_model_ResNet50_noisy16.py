@@ -70,7 +70,7 @@ class ResNet50(nn.Module):
         f_power = torch.sqrt(torch.sum(torch.pow(f, 2))/self.feature_dim)
         # fnorm = torch.norm(f, p=2, dim=1, keepdim=True)
         f_normalized = torch.div(f, f_power)
-        f_noisy = f_normalized + torch.randn(f_normalized.size()).cuda()*torch.Tensor([0.5]).cuda()
+        f_noisy = f_normalized.half() + torch.randn(f_normalized.size()).half().cuda()*torch.Tensor([0.5]).half().cuda()
         f_denormalized = torch.mul(f_noisy, f_power)
         # print(torch.max(f_denormalized))
         # print(torch.min(f_denormalized))
@@ -98,7 +98,7 @@ def train(epoch, net, criterion, optimizer, data_train_loader):
     for i, data in enumerate(data_train_loader, 0):
         # get the inputs
         inputs, labels, camera_id = data
-        inputs, labels = inputs.cuda(), labels.cuda()
+        inputs, labels = inputs.half().cuda(), labels.cuda()
 
         # zero the parameter gradients
         optimizer.zero_grad()
@@ -139,7 +139,7 @@ def evaluate_new(net, data_query_loader, data_gallery_loader, feature_dim=2048):
     print('Extracting gallery features...')
     for i, query in enumerate(data_query_loader, 0):
         inputs, labels, camera_id = query
-        inputs, labels = inputs.cuda(), labels.cuda()
+        inputs, labels = inputs.half().cuda(), labels.cuda()
         features = net(inputs)
         features = features.data.cpu()
         query_features[i, :] = np.array(features)
@@ -153,7 +153,7 @@ def evaluate_new(net, data_query_loader, data_gallery_loader, feature_dim=2048):
     print('Extracting query features...')
     for i, query in enumerate(data_gallery_loader, 0):
         inputs, labels, camera_id = query
-        inputs, labels = inputs.cuda(), labels.cuda()
+        inputs, labels = inputs.half().cuda(), labels.cuda()
         features = net(inputs)
         features = features.data.cpu()
         gallery_features[i, :] = np.array(features)
@@ -224,13 +224,18 @@ if __name__ == '__main__':
     cuhk_data_gallery_loader = torch.utils.data.DataLoader(cuhk_data_gallery, batch_size=1, shuffle=False)
 
     if opt.test:
-        net = torch.load(opt.model_path)
+        if opt.model_path != '/':
+            net = torch.load(opt.model_path)
+        else:
+            net = ResNet50(num_classes=767, feature_dim=opt.feature_dim)
         net = net.cuda()
+        net.half()
         cmc, ap = evaluate_new(net, cuhk_data_query_loader, cuhk_data_gallery_loader, feature_dim=opt.feature_dim)
         exit()
 
     net = ResNet50(num_classes=767, feature_dim=opt.feature_dim)
     net = net.cuda()
+    net.half()
     criterion = nn.CrossEntropyLoss().cuda()
     optimizer = optim.SGD([
         {'params': net.base.parameters(), 'lr': opt.learning_rate, 'weight_decay': 5e-4},
